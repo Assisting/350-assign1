@@ -33,7 +33,7 @@
             }
         </style>
         <script type="text/javascript"
-          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEJoBIgACHpCzwz0AkgxuG1rMTBIQFs7E&libraries=places">
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEJoBIgACHpCzwz0AkgxuG1rMTBIQFs7E&libraries=places&region=ca">
         </script>
         
         <script>
@@ -146,33 +146,55 @@
             }
 
             function calcCoordRoute() {
-                markers[0].setMap(null);
-                markers[1].setMap(null);
+                var distanceTotal = 0;
                 
-                startLatitude = parseFloat(document.getElementById("startLat").value);
-                startLongitude = parseFloat(document.getElementById("startLong").value);
-                endLatitude = parseFloat(document.getElementById("endLat").value);
-                endLongitude = parseFloat(document.getElementById("endLong").value);
+                if(markers[0] != null) {
+                    markers[0].setMap(null);
+                }
+                
+                if(markers[1] != null) {
+                    markers[1].setMap(null);
+                }
+                
+                var startLatitude = parseFloat(document.getElementById("startLat").value);
+                var startLongitude = parseFloat(document.getElementById("startLong").value);
+                var endLatitude = parseFloat(document.getElementById("endLat").value);
+                var endLongitude = parseFloat(document.getElementById("endLong").value);
                 
                 locations[0] = new google.maps.LatLng(startLatitude, startLongitude);
                 locations[1] = new google.maps.LatLng(endLatitude, endLongitude);
                     
                 var markerTitle0 = startLatitude.toString() + ", " + startLongitude.toString();
-                var marketTitle1 = endLatitude.toString() + ", " + endLongitude.toString();
+                var markerTitle1 = endLatitude.toString() + ", " + endLongitude.toString();
                     
                 markers[0] = new google.maps.Marker({
-                        map: null,
+                        map: map,
                         position: locations[0],
                         title: markerTitle0
                 });
                 
                 markers[1] = new google.maps.Marker({
-                        map: null,
+                        map: map,
                         position: locations[1],
                         title: markerTitle1
                 });
                 
-                calcRoute();
+                var selectedMode = document.getElementById("mode").value;
+                
+                var request = {
+                    origin: locations[0],
+                    destination: locations[1],
+                    travelMode: google.maps.TravelMode[selectedMode]
+                };
+                
+                directionsService.route(request, function (response, status) {
+                    if (status == google.maps.DirectionsStatus.OK) {
+                        // The distance will be for the first route returned
+                        document.getElementById("km").innerHTML = (response.routes[0].legs[0].distance.value / 1000) + " km";
+                        
+                        directionsDisplay.setDirections(response);
+                    }
+                });
             }
 
             if ("geolocation" in navigator) {
@@ -198,25 +220,24 @@
         
         <div id="coords">
         </div>
-        <div id="km">
-        </div>
         <input type="text" id="startLocation" placeholder="enter your starting location" onchange="search(this.value, 0)"><br />
         <input type="text" id="endLocation" placeholder="enter destination" onchange="search(this.value, 1)">
         
-        <input type="button" name="startLocation" value="Show the Way" onclick="calcRoute();"><br />
+        <input type="button" value="Show the Way" onclick="calcRoute();"><br />
         
         <div id="errorCode">
         </div>
         
         <br />
-        Starting Location Latitude: <input type="text" id="startLat" onchange="validate(this.value, 0)">
-        Starting Location Longitude: <input type="text" id="startLong" onchange="validate(this.value, 1)"><br />
+        Starting Location Latitude: <input type="text" id="startLat" onchange="validate(this.value, 0);">
+        Starting Location Longitude: <input type="text" id="startLong" onchange="validate(this.value, 1);"><br />
         
-        Destination Latitude: <input type="text" id="endLat" onchange="validate(this.value, 0)">
-        Destination Longitude: <input type="text" id="endLong" onchange="validate(this.value, 1)">
+        Destination Latitude: <input type="text" id="endLat" onchange="validate(this.value, 0);">
+        Destination Longitude: <input type="text" id="endLong" onchange="validate(this.value, 1);">
             
-        <input type="button" name="startLocation" value="Track path" onclick="calcCoordRoute();"><br />
-            
+        <input type="button" value="Track path" onclick="calcCoordRoute();"><br />
+        <div id="km">
+        </div>
         <div id="errorCode2">
         </div>
     </body>
