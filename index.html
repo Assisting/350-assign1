@@ -6,26 +6,218 @@
         
         <title>Assignment 1 - Erik LaBine</title>
         
-        <!-- JQuery -->
-        <!--
-        <script src="//code.jquery.com/jquery-1.10.2.js"></script>
-        <script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
-        -->
-        
         <!-- From the Google Maps JavaScript API Tutorial -->
         <style type="text/css">
-          html, body, #map-canvas { height: 100%; margin: 0; padding: 0;}
+            html, body, #map-canvas {
+                height: 90%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            #panel {
+                position: absolute;
+                top: 5px;
+                left: 50%;
+                margin-left: -180px;
+                z-index: 5;
+                background-color: #fff;
+                padding: 5px;
+                border: 1px solid #999;
+            }
+            input[type=text] {
+                margin-left: 5%;
+                width: 20%;
+            }
+            #errorCode, #errorCode2 {
+                color: #FF0000;
+            }
         </style>
         <script type="text/javascript"
-          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEJoBIgACHpCzwz0AkgxuG1rMTBIQFs7E">
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEJoBIgACHpCzwz0AkgxuG1rMTBIQFs7E&libraries=places">
         </script>
         
-        <script type="text/javascript" src="geolocation.js"></script>
+        <script>
+            var placesService;
+            var map;
+            locations = [null, null];
+            var nextIndex = 0;
+            var markers = [null, null];
+            var directionsDisplay;
+            var directionsService;
+
+            function geoAvailable(position) {
+                var currentPosition = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+                var mapOptions = {
+                    center: currentPosition,
+                    zoom: 12,
+                    mapTypeControl: false,
+                    mapTypeId: google.maps.MapTypeId.ROADMAP
+                };
+                map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+
+                var marker = new google.maps.Marker({
+                    position: currentPosition,
+                    map: map,
+                    title: "You started from here!"
+                });
+                
+                placesService = new google.maps.places.PlacesService(map);
+                directionsService = new google.maps.DirectionsService();
+                directionsDisplay = new google.maps.DirectionsRenderer();
+                directionsDisplay.setMap(map);
+                
+                var coordsDiv = "<p>Lat: " + position.coords.latitude.toFixed(14) + ", Long: " + position.coords.longitude.toFixed(14) + "</p>";
+                
+                document.getElementById('coords').innerHTML = coordsDiv;
+            }
+
+            function callback(results, status) {
+                if (status == google.maps.places.PlacesServiceStatus.OK) {
+                    if(markers[nextIndex] != null) {
+                        markers[nextIndex].setMap(null);
+                    }
+                    locations[nextIndex] = results[0].geometry.location;
+                    markers[nextIndex] = createMarker(results[0]);
+                } else {
+                    document.getElementById("errorCode").innerHTML = status;
+                }
+            }
+
+            function createMarker(place) {
+                var marker = new google.maps.Marker({
+                    map: null,
+                    position: place.geometry.location,
+                    title: place.name
+                });
+                
+                return marker;
+            }
+            
+            function search(locationName, index) {
+                if (locationName != null) {
+                    var request = {
+                        query: locationName
+                    };
+                    
+                    nextIndex = index;
+                    placesService.textSearch(request, callback);
+                } else {
+                    document.getElementById("errorCode").innerHTML = "Neither field can be left blank";
+                }
+            }
+
+            function calcRoute() {
+                markers[0].setMap(map);
+                markers[1].setMap(map);
+                
+                var selectedMode = document.getElementById("mode").value;
+                var request = {
+                    origin: locations[0],
+                    destination: locations[1],
+                    travelMode: google.maps.TravelMode[selectedMode]
+                };
+                directionsService.route(request, function (response, status) {
+                    if (status == google.maps.DirectionsStatus.OK) {
+                        directionsDisplay.setDirections(response);
+                    }
+                });
+            }
+
+            function validate(inputString, validationType) {
+                var pass = false;
+                var inputValue = parseFloat(inputString);
+                
+                if (validationType == 0) { // Latitude
+                    if ((inputValue >= 51.5) && (inputValue <= 53.0)) {
+                        pass = true;
+                    }
+                } else { // Longitude
+                    if ((inputValue >= -107.0) && (inputValue <= -106.5)) {
+                        pass = true;
+                    }
+                }
+                
+                if (pass == true) {
+                    document.getElementById("errorCode2").innerHTML = "";
+                } else {
+                    document.getElementById("errorCode2").innerHTML = "Fields out of bounds; 51.5 > latitude > 53, -107 > longitude > -106.5";
+                }
+            }
+
+            function calcCoordRoute() {
+                markers[0].setMap(null);
+                markers[1].setMap(null);
+                
+                startLatitude = parseFloat(document.getElementById("startLat").value);
+                startLongitude = parseFloat(document.getElementById("startLong").value);
+                endLatitude = parseFloat(document.getElementById("endLat").value);
+                endLongitude = parseFloat(document.getElementById("endLong").value);
+                
+                locations[0] = new google.maps.LatLng(startLatitude, startLongitude);
+                locations[1] = new google.maps.LatLng(endLatitude, endLongitude);
+                    
+                var markerTitle0 = startLatitude.toString() + ", " + startLongitude.toString();
+                var marketTitle1 = endLatitude.toString() + ", " + endLongitude.toString();
+                    
+                markers[0] = new google.maps.Marker({
+                        map: null,
+                        position: locations[0],
+                        title: markerTitle0
+                });
+                
+                markers[1] = new google.maps.Marker({
+                        map: null,
+                        position: locations[1],
+                        title: markerTitle1
+                });
+                
+                calcRoute();
+            }
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(geoAvailable);
+            } else {
+                error('Geo Location is not supported');
+            }
+        </script>
     </head>
     
     <body>
+        <div id="panel">
+        <b>Mode of Travel: </b>
+        <select id="mode" onchange="calcRoute();">
+            <option value="WALKING">Walking</option>
+            <option value="BICYCLING">Bicycling</option>
+        </select>
+        </div>
+        
         <div id="map-canvas">
         <!-- The map itself -->
+        </div>
+        
+        <div id="coords">
+        </div>
+        <div id="km">
+        </div>
+        <input type="text" id="startLocation" placeholder="enter your starting location" onchange="search(this.value, 0)"><br />
+        <input type="text" id="endLocation" placeholder="enter destination" onchange="search(this.value, 1)">
+        
+        <input type="button" name="startLocation" value="Show the Way" onclick="calcRoute();"><br />
+        
+        <div id="errorCode">
+        </div>
+        
+        <br />
+        Starting Location Latitude: <input type="text" id="startLat" onchange="validate(this.value, 0)">
+        Starting Location Longitude: <input type="text" id="startLong" onchange="validate(this.value, 1)"><br />
+        
+        Destination Latitude: <input type="text" id="endLat" onchange="validate(this.value, 0)">
+        Destination Longitude: <input type="text" id="endLong" onchange="validate(this.value, 1)">
+            
+        <input type="button" name="startLocation" value="Track path" onclick="calcCoordRoute();"><br />
+            
+        <div id="errorCode2">
         </div>
     </body>
 </html>
